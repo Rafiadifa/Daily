@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#f5f1e8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Daily Log" />
+  <title>Daily Log</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icons/favicon-64.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=9" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">◐</span>
+      <h1>Daily Log</h1>
+    </div>
+    <div class="header-tools">
+      <button id="profileBtn" class="icon-btn" title="Profile & targets">⚙</button>
+      <button id="exportBtn" class="icon-btn" title="Export data">↗</button>
+      <button id="importBtn" class="icon-btn" title="Import data">↙</button>
+      <input type="file" id="importFile" accept="application/json" hidden />
+    </div>
+  </header>
+
+  <div id="backupBanner" class="backup-banner" hidden>
+    <span id="backupText">Back up your data so you don't lose it.</span>
+    <span class="backup-actions">
+      <button id="backupNowBtn" class="text-btn">Export now ↗</button>
+      <button id="backupDismiss" class="icon-btn small">✕</button>
+    </span>
+  </div>
+
+  <nav class="tab-nav three">
+    <button class="tab-btn active" data-tab="day"><span class="tab-icon">📅</span><span class="tab-label">Day</span></button>
+    <button class="tab-btn" data-tab="money"><span class="tab-icon">💰</span><span class="tab-label">Money</span></button>
+    <button class="tab-btn" data-tab="weight"><span class="tab-icon">⚖</span><span class="tab-label">Weight</span></button>
+  </nav>
+
+  <main class="app-main">
+    <!-- ============ DAY TAB ============ -->
+    <section id="tab-day" class="tab-panel active">
+      <!-- Last 7 days -->
+      <div class="week-summary">
+        <div class="week-title">Last 7 days</div>
+        <div class="week-grid">
+          <div class="week-stat"><span class="week-val" id="weekAvgCal">—</span><span class="week-lbl">avg kcal/day</span></div>
+          <div class="week-stat"><span class="week-val" id="weekNet">—</span><span class="week-lbl">avg net</span></div>
+          <div class="week-stat"><span class="week-val" id="weekWater">—</span><span class="week-lbl">water goal</span></div>
+          <div class="week-stat"><span class="week-val" id="weekTraining">—</span><span class="week-lbl">training days</span></div>
+          <div class="week-stat"><span class="week-val" id="weekWeight">—</span><span class="week-lbl">weight Δ kg</span></div>
+        </div>
+      </div>
+
+      <div class="cal-layout">
+        <div class="cal-side">
+          <div class="cal-header">
+            <button class="day-nav" id="dayCalPrev">‹</button>
+            <h2 class="cal-month" id="dayCalMonth">—</h2>
+            <button class="day-nav" id="dayCalNext">›</button>
+          </div>
+          <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          <div class="cal-grid" id="dayCalGrid"></div>
+          <div class="cal-legend">
+            <span class="legend-item"><span class="legend-dot dot-low"></span>&lt;1500</span>
+            <span class="legend-item"><span class="legend-dot dot-mid"></span>1500–2500</span>
+            <span class="legend-item"><span class="legend-dot dot-high"></span>&gt;2500</span>
+            <span class="legend-item"><span class="activity-dot static"></span>trained</span>
+          </div>
+        </div>
+
+        <div class="day-side">
+          <h2 class="day-title" id="dayDateLabel">Today</h2>
+
+          <div class="net-card">
+            <div class="net-stat"><span class="net-label">Eaten</span><span class="net-value" id="totalCalories">0</span><span class="net-unit">in</span></div>
+            <div class="net-divider">−</div>
+            <div class="net-stat"><span class="net-label">Burned</span><span class="net-value" id="caloriesBurned">—</span><span class="net-unit">out</span></div>
+            <div class="net-divider">=</div>
+            <div class="net-stat result"><span class="net-label">Net</span><span class="net-value" id="caloriesNet">—</span><span class="net-unit">kcal</span></div>
+          </div>
+
+          <div class="budget">
+            <div class="budget-bar"><div class="budget-fill" id="budgetFill"></div></div>
+            <div class="budget-labels"><span id="budgetTarget">Target —</span><span class="budget-left" id="budgetLeft">—</span></div>
+          </div>
+
+          <div class="day-controls">
+            <label class="control-field">
+              <span>Burned today (from watch)</span>
+              <div class="input-row"><input type="number" id="burnedInput" placeholder="e.g. 2100" step="10" /><span class="unit-suffix">kcal</span></div>
+            </label>
+            <label class="control-field">
+              <span>Sport / Activity</span>
+              <select id="sportSelect">
+                <option value="none">None — rest day</option>
+                <option value="light">Light — walking, casual</option>
+                <option value="moderate">Moderate — gym, dance, jog</option>
+                <option value="intense">Intense — heavy training</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Fasting window -->
+          <div id="fastingWidget" class="fasting-widget"></div>
+
+          <!-- Water -->
+          <div class="section-title"><h3>Water</h3></div>
+          <div class="water-module">
+            <div class="water-ring-wrap">
+              <svg class="water-ring" viewBox="0 0 100 100">
+                <circle class="ring-track" cx="50" cy="50" r="42"></circle>
+                <circle id="waterRingProgress" class="ring-progress" cx="50" cy="50" r="42"></circle>
+              </svg>
+              <div class="water-ring-center"><span id="waterRingMl">0</span><small id="waterRingGoal">of 2400</small></div>
+            </div>
+            <div class="water-controls">
+              <div class="water-quick-grid">
+                <button class="water-quick" data-amount="150">+150<small>cup</small></button>
+                <button class="water-quick" data-amount="250">+250<small>glass</small></button>
+                <button class="water-quick" data-amount="500">+500<small>bottle</small></button>
+                <button class="water-quick" data-amount="750">+750<small>big</small></button>
+              </div>
+              <div class="custom-add">
+                <input type="number" id="customWater" placeholder="custom ml" step="50" />
+                <button id="addCustomWaterBtn" class="primary-btn">Add</button>
+              </div>
+              <div class="water-goal-line"><button id="editGoalBtn" class="text-btn">edit goal</button></div>
+            </div>
+          </div>
+          <div id="waterLog" class="water-log"></div>
+
+          <!-- Food -->
+          <div class="section-title">
+            <h3>Food</h3>
+            <button id="addFoodBtn" class="primary-btn">+ Add food</button>
+          </div>
+          <div id="favoritesRow" class="favorites-row empty"></div>
+          <div id="foodList" class="log-list"></div>
+
+          <!-- Reflection -->
+          <div class="section-title"><h3>Reflection</h3></div>
+          <textarea id="dayNote" class="day-note" placeholder="How did today go? Energy, cravings, mood, training, sleep…"></textarea>
+        </div>
+      </div>
+
+      <!-- Add/Edit Meal Modal -->
+      <div id="foodModal" class="modal" hidden>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="foodModalTitle">Add meal</h3>
+            <button class="close-btn" data-close="foodModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="field-row">
+              <label class="field grow"><span>Meal name (optional)</span><input type="text" id="mealName" placeholder="e.g. Lunch — blank = auto" /></label>
+              <label class="field"><span>Time</span><input type="time" id="mealTime" /></label>
+            </div>
+
+            <div class="ai-paste">
+              <label class="field"><span>Quick add — paste an AI estimate or describe it</span>
+                <textarea id="aiPaste" rows="2" placeholder="e.g. Nasi goreng ~650 kcal, ¥12  ·  or  ·  Iced latte 160cal 18 yuan"></textarea>
+              </label>
+              <button type="button" id="parsePasteBtn" class="mini-btn">⤵ Extract calories &amp; price</button>
+            </div>
+
+            <div class="items-header">
+              <span>Items</span>
+              <button type="button" id="addItemBtn" class="mini-btn">+ Add item</button>
+            </div>
+            <div id="itemsContainer"></div>
+            <div class="meal-total"><span>Meal total</span><strong id="mealTotal">0 kcal</strong></div>
+
+            <div class="divider-label">Cost (for your planner)</div>
+            <div class="field-row">
+              <label class="field grow"><span>Price <em>(¥, optional)</em></span>
+                <div class="input-row"><span class="unit-prefix">¥</span><input type="number" id="mealPrice" step="0.01" min="0" placeholder="e.g. 12.5" /></div>
+              </label>
+              <label class="field"><span>Category</span>
+                <select id="mealCategory"><option value="Makan">Makan (food)</option><option value="Minum">Minum (drink)</option></select>
+              </label>
+            </div>
+            <label class="field"><span>Paid from</span>
+              <select id="mealAccount">
+                <option value="Bank of China">Bank of China</option>
+                <option value="Weixin Pay">Weixin Pay</option>
+                <option value="Student Card">Student Card</option>
+                <option value="Alipay">Alipay</option>
+                <option value="Cash">Cash</option>
+                <option value="ICBC">ICBC</option>
+              </select>
+            </label>
+
+            <label class="field"><span>Photo (optional)</span><input type="file" id="foodPhoto" accept="image/*" capture="environment" /></label>
+            <label class="field"><span>Notes (optional)</span><textarea id="foodNotes" rows="2" placeholder="anything to remember about this meal"></textarea></label>
+          </div>
+          <div class="modal-footer">
+            <button class="secondary-btn" data-close="foodModal">Cancel</button>
+            <button id="saveFoodBtn" class="primary-btn">Save meal</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MONEY TAB ============ -->
+    <section id="tab-money" class="tab-panel">
+      <div class="summary-card three">
+        <div class="summary-stat"><span class="stat-label">Spent this month</span><span class="stat-value" id="moneyMonthTotal">—</span><span class="stat-unit">¥</span></div>
+        <div class="summary-stat"><span class="stat-label">Cost efficiency</span><span class="stat-value" id="moneyPerKcal">—</span><span class="stat-unit">¥/1000kcal</span></div>
+        <div class="summary-stat"><span class="stat-label">Food / Drink</span><span class="stat-value" id="moneySplit">—</span><span class="stat-unit">makan · minum</span></div>
+      </div>
+
+      <div class="section-title">
+        <h3>Spending trend</h3>
+        <div class="range-toggle">
+          <button class="money-range-btn active" data-range="week">Week</button>
+          <button class="money-range-btn" data-range="month">Month</button>
+          <button class="money-range-btn" data-range="all">All</button>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="moneyChart"></canvas></div>
+
+      <div class="section-title">
+        <h3>Recap to planner</h3>
+        <button id="copyRecapBtn" class="primary-btn">⧉ Copy rows</button>
+      </div>
+      <p class="hint">Food entries with a price, not yet copied. Hit <strong>Copy rows</strong>, then in your planner open the month tab and paste into the first empty <strong>Date</strong> cell. Columns line up with <em>Date · Transactions · Amount · Cashflow · Category · Dari Account · Ke Account</em>.</p>
+      <div id="recapTable" class="recap-table"></div>
+      <div class="recap-foot">
+        <label class="checkbox-field small"><input type="checkbox" id="showRecapped" /><span>Show already-copied rows</span></label>
+      </div>
+    </section>
+
+    <!-- ============ WEIGHT TAB ============ -->
+    <section id="tab-weight" class="tab-panel">
+      <div class="summary-card">
+        <div class="summary-stat"><span class="stat-label">Latest weight</span><span class="stat-value" id="latestWeight">—</span><span class="stat-unit">kg</span></div>
+        <div class="summary-stat"><span class="stat-label">7-day change</span><span class="stat-value" id="weekChange">—</span><span class="stat-unit">kg</span></div>
+      </div>
+
+      <div class="section-title">
+        <h3>Today's data</h3>
+        <button id="addWeightBtn" class="primary-btn">+ Log today</button>
+      </div>
+
+      <div class="section-title">
+        <h3>Trend</h3>
+        <div class="range-toggle">
+          <button class="range-btn active" data-range="week">Week</button>
+          <button class="range-btn" data-range="month">Month</button>
+          <button class="range-btn" data-range="all">All</button>
+        </div>
+      </div>
+
+      <div class="range-toggle metric-toggle">
+        <button class="metric-btn active" data-metric="weight">Weight</button>
+        <button class="metric-btn" data-metric="waist">Waist</button>
+        <button class="metric-btn" data-metric="bodyFat">Body fat</button>
+      </div>
+
+      <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+
+      <div class="section-title"><h3>History</h3></div>
+      <div id="weightList" class="log-list"></div>
+
+      <!-- Weight Modal -->
+      <div id="weightModal" class="modal" hidden>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Log weight &amp; body data</h3>
+            <button class="close-btn" data-close="weightModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <label class="field"><span>Weight (kg) <em>*</em></span><input type="number" id="wtWeight" step="0.1" placeholder="68.5" /></label>
+            <label class="field"><span>Body fat % <em>(optional)</em></span><input type="number" id="wtBodyFat" step="0.1" placeholder="18" /></label>
+            <label class="field"><span>Waist (cm) <em>(optional)</em></span><input type="number" id="wtWaist" step="0.5" placeholder="78" /></label>
+            <label class="field"><span>Sleep last night (hours)</span><input type="number" id="wtSleep" step="0.25" placeholder="7.5" /></label>
+            <label class="field"><span>Energy today (1–10)</span><input type="number" id="wtEnergy" min="1" max="10" step="1" placeholder="7" /></label>
+            <label class="field"><span>Exercise today (minutes)</span><input type="number" id="wtExercise" step="5" placeholder="60" /></label>
+            <label class="field"><span>Steps (manual, optional)</span><input type="number" id="wtSteps" step="100" placeholder="8000" /></label>
+            <label class="field"><span>Notes</span><textarea id="wtNotes" rows="2" placeholder="rest day, ramadhan fasting, dance class, etc."></textarea></label>
+          </div>
+          <div class="modal-footer">
+            <button class="secondary-btn" data-close="weightModal">Cancel</button>
+            <button id="saveWeightBtn" class="primary-btn">Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Profile &amp; targets</h3>
+        <button class="close-btn" data-close="profileModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint">Sets your daily calorie &amp; water targets. Weight comes from your latest weight log — update it on the Weight tab.</p>
+        <label class="field"><span>Height (cm)</span><input type="number" id="pfHeight" step="1" placeholder="169" /></label>
+        <label class="field"><span>Age</span><input type="number" id="pfAge" step="1" placeholder="20" /></label>
+        <label class="field"><span>Sex <em>(for the BMR formula)</em></span>
+          <select id="pfSex"><option value="male">Male</option><option value="female">Female</option></select>
+        </label>
+        <label class="field"><span>Activity level</span>
+          <select id="pfActivity">
+            <option value="sedentary">Sedentary — little exercise</option>
+            <option value="light">Light — 1–3 days/week</option>
+            <option value="moderate">Moderate — 3–5 days/week</option>
+            <option value="active">Active — 6–7 days/week</option>
+            <option value="very_active">Very active — athlete</option>
+          </select>
+        </label>
+        <label class="field"><span>Goal</span>
+          <select id="pfGoal">
+            <option value="lose">Lose weight (gentle deficit)</option>
+            <option value="maintain">Maintain</option>
+            <option value="gain">Gain</option>
+          </select>
+        </label>
+
+        <div class="divider-label">Fasting / eating window</div>
+        <label class="field checkbox-field">
+          <input type="checkbox" id="pfFastEnabled" />
+          <span>Track an eating window</span>
+        </label>
+        <div class="field-row">
+          <label class="field grow"><span>Window opens</span><input type="time" id="pfFastStart" value="06:30" /></label>
+          <label class="field grow"><span>Window closes</span><input type="time" id="pfFastEnd" value="14:30" /></label>
+        </div>
+
+        <div class="target-preview">
+          <div><span>BMR (at rest)</span><strong id="pfBmr">—</strong></div>
+          <div><span>Maintenance (TDEE)</span><strong id="pfTdee">—</strong></div>
+          <div class="highlight"><span>Calorie target</span><strong id="pfTarget">—</strong></div>
+          <div><span>Water target</span><strong id="pfWater">—</strong></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary-btn" data-close="profileModal">Cancel</button>
+        <button id="saveProfileBtn" class="primary-btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js (weight tab) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- App modules (order matters) -->
+  <script src="js/storage.js?v=9"></script>
+  <script src="js/calories.js?v=9"></script>
+  <script src="js/day.js?v=9"></script>
+  <script src="js/money.js?v=9"></script>
+  <script src="js/weight.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
+</body>
+</html>
