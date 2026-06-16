@@ -7,11 +7,28 @@ const WeightTab = (() => {
   let chartInstance = null;
   let currentRange = 'week';
   let currentMetric = 'weight'; // weight | waist | bodyFat
+  let editingDate = null;       // which date the modal is logging/editing
   const $ = (id) => document.getElementById(id);
 
+  // Hours slept from two HH:MM times, handling crossing midnight.
+  function sleepHours(start, end) {
+    if (!start || !end) return null;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60;
+    return Math.round(mins / 60 * 100) / 100;
+  }
+  function updateSleepReadout() {
+    const h = sleepHours($('wtSleepStart').value, $('wtSleepEnd').value);
+    $('wtSleepReadout').textContent = h != null ? `${h} h slept` : '— h slept';
+  }
+
   function init() {
-    $('addWeightBtn').addEventListener('click', openModal);
+    $('addWeightBtn').addEventListener('click', () => openModal(null));
     $('saveWeightBtn').addEventListener('click', saveWeight);
+    $('wtSleepStart').addEventListener('input', updateSleepReadout);
+    $('wtSleepEnd').addEventListener('input', updateSleepReadout);
 
     document.querySelectorAll('.range-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -34,17 +51,23 @@ const WeightTab = (() => {
     render();
   }
 
-  function openModal() {
-    const today = formatDate(new Date());
-    const existing = Storage.getWeights().find(e => e.date === today);
+  function openModal(date) {
+    editingDate = date || formatDate(new Date());
+    const existing = Storage.getWeights().find(e => e.date === editingDate);
+    const isToday = editingDate === formatDate(new Date());
+    $('weightModalTitle').textContent = existing
+      ? `Edit · ${prettyDate(editingDate)}`
+      : (isToday ? 'Log weight & body data' : `Log · ${prettyDate(editingDate)}`);
     $('wtWeight').value = existing?.weight || '';
     $('wtBodyFat').value = existing?.bodyFat || '';
     $('wtWaist').value = existing?.waist || '';
-    $('wtSleep').value = existing?.sleep || '';
+    $('wtSleepStart').value = existing?.sleepStart || '';
+    $('wtSleepEnd').value = existing?.sleepEnd || '';
     $('wtEnergy').value = existing?.energy || '';
     $('wtExercise').value = existing?.exercise || '';
     $('wtSteps').value = existing?.steps || '';
     $('wtNotes').value = existing?.notes || '';
+    updateSleepReadout();
     $('weightModal').hidden = false;
   }
 
@@ -54,12 +77,16 @@ const WeightTab = (() => {
       alert('Please enter a valid weight (kg)');
       return;
     }
+    const start = $('wtSleepStart').value || null;
+    const end = $('wtSleepEnd').value || null;
     const entry = {
-      date: formatDate(new Date()),
+      date: editingDate || formatDate(new Date()),
       weight: w,
       bodyFat: parseFloat($('wtBodyFat').value) || null,
       waist: parseFloat($('wtWaist').value) || null,
-      sleep: parseFloat($('wtSleep').value) || null,
+      sleepStart: start,
+      sleepEnd: end,
+      sleep: sleepHours(start, end),
       energy: parseInt($('wtEnergy').value) || null,
       exercise: parseInt($('wtExercise').value) || null,
       steps: parseInt($('wtSteps').value) || null,
@@ -223,14 +250,18 @@ const WeightTab = (() => {
     }
     // most recent first
     const sorted = [...weights].reverse().slice(0, 30);
-    list.innerHTML = sorted.map(e => `
-      <div class="log-item">
+    list.innerHTML = sorted.map(e => {
+      const sleepTxt = e.sleep != null
+        ? `😴 ${e.sleep}h${e.sleepStart && e.sleepEnd ? ` (${e.sleepStart}→${e.sleepEnd})` : ''}`
+        : '';
+      return `
+      <div class="log-item editable" data-edit="${e.date}">
         <div class="log-info">
           <div class="log-name">${prettyDate(e.date)}</div>
           <div class="log-meta">
             ${e.bodyFat ? `<span>BF ${e.bodyFat}%</span>` : ''}
             ${e.waist ? `<span>Waist ${e.waist}cm</span>` : ''}
-            ${e.sleep ? `<span>😴 ${e.sleep}h</span>` : ''}
+            ${sleepTxt ? `<span>${sleepTxt}</span>` : ''}
             ${e.energy ? `<span>⚡ ${e.energy}/10</span>` : ''}
             ${e.exercise ? `<span>🏃 ${e.exercise}min</span>` : ''}
             ${e.steps ? `<span>${e.steps} steps</span>` : ''}
@@ -239,11 +270,18 @@ const WeightTab = (() => {
         </div>
         <div class="log-cal" style="font-size:22px;">${e.weight.toFixed(1)}<small style="font-size:10px;color:var(--ink-faint);font-family:var(--font-mono);"> kg</small></div>
         <button class="log-delete" data-date="${e.date}">×</button>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
 
+    list.querySelectorAll('.log-item.editable').forEach(row => {
+      row.addEventListener('click', (ev) => {
+        if (ev.target.closest('.log-delete')) return;
+        openModal(row.dataset.edit);
+      });
+    });
     list.querySelectorAll('.log-delete').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
         if (confirm('Delete this entry?')) {
           Storage.deleteWeight(btn.dataset.date);
           render();

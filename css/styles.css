@@ -1417,6 +1417,12 @@ input[type="range"]::-moz-range-thumb {
   color: var(--water);
 }
 .water-chip small { color: var(--ink-faint); font-size: 11px; }
+.wedit {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--font-mono); font-size: 13px; color: var(--water);
+  border-bottom: 1px dotted var(--water); line-height: 1.2;
+}
+.wedit:hover { color: var(--ink); border-bottom-color: var(--ink); }
 .wlog-del {
   background: none; border: none; color: var(--ink-faint);
   font-size: 15px; cursor: pointer; line-height: 1; padding: 0 2px;
@@ -1491,6 +1497,49 @@ input[type="range"]::-moz-range-thumb {
 /* ---------- Three-tab nav ---------- */
 .tab-nav.three .tab-btn { min-width: 92px; }
 
+/* ---------- Day date bar (collapsible calendar) ---------- */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.date-bar-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.date-bar-label .chev {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--ink-faint);
+  transition: transform 0.2s;
+}
+.date-bar-label.open .chev { transform: rotate(180deg); }
+.sleep-readout {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: -6px 0 14px;
+}
+.cal-collapse {
+  margin-bottom: 4px;
+  animation: calReveal 0.18s ease;
+}
+@keyframes calReveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
 /* ---------- AI quick-add paste ---------- */
 .ai-paste { margin-bottom: 14px; }
 .ai-paste .field { margin-bottom: 8px; }
@@ -1554,3 +1603,29 @@ input[type="range"]::-moz-range-thumb {
 .checkbox-field.small span { font-size: 12px; color: var(--ink-soft); }
 .checkbox-field.small input[type="checkbox"] { width: 15px; height: 15px; }
 #copyRecapBtn:disabled { opacity: 0.5; cursor: default; }
+
+/* food budget card */
+.money-budget {
+  background: var(--bg-card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+.budget-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-faint); font-weight: 500; margin-bottom: 12px;
+}
+.money-budget .budget { margin-bottom: 0; padding: 0; }
+
+/* insights */
+.insights-range { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--ink-faint); font-style: normal; text-transform: none; letter-spacing: 0; }
+.insights-list { display: flex; flex-direction: column; gap: 8px; }
+.insight-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--bg-card); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.insight-icon { font-size: 18px; line-height: 1.2; flex: none; }
+.insight-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.insight-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 500; }
+.insight-text { font-size: 13px; color: var(--ink); }

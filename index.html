@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=9" />
+  <link rel="stylesheet" href="css/styles.css?v=11" />
 </head>
 <body>
   <header class="app-header">
@@ -61,24 +61,32 @@
 
       <div class="cal-layout">
         <div class="cal-side">
-          <div class="cal-header">
-            <button class="day-nav" id="dayCalPrev">‹</button>
-            <h2 class="cal-month" id="dayCalMonth">—</h2>
-            <button class="day-nav" id="dayCalNext">›</button>
+          <div class="date-bar">
+            <button class="day-nav" id="dayPrev" title="Previous day">‹</button>
+            <button class="date-bar-label" id="calToggle" aria-expanded="false">
+              <span id="dayDateLabel">Today</span>
+              <span class="chev">▾</span>
+            </button>
+            <button class="day-nav" id="dayNext" title="Next day">›</button>
           </div>
-          <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-          <div class="cal-grid" id="dayCalGrid"></div>
-          <div class="cal-legend">
-            <span class="legend-item"><span class="legend-dot dot-low"></span>&lt;1500</span>
-            <span class="legend-item"><span class="legend-dot dot-mid"></span>1500–2500</span>
-            <span class="legend-item"><span class="legend-dot dot-high"></span>&gt;2500</span>
-            <span class="legend-item"><span class="activity-dot static"></span>trained</span>
+          <div class="cal-collapse" id="calCollapse" hidden>
+            <div class="cal-header">
+              <button class="day-nav" id="dayCalPrev">‹</button>
+              <h2 class="cal-month" id="dayCalMonth">—</h2>
+              <button class="day-nav" id="dayCalNext">›</button>
+            </div>
+            <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+            <div class="cal-grid" id="dayCalGrid"></div>
+            <div class="cal-legend">
+              <span class="legend-item"><span class="legend-dot dot-low"></span>&lt;1500</span>
+              <span class="legend-item"><span class="legend-dot dot-mid"></span>1500–2500</span>
+              <span class="legend-item"><span class="legend-dot dot-high"></span>&gt;2500</span>
+              <span class="legend-item"><span class="activity-dot static"></span>trained</span>
+            </div>
           </div>
         </div>
 
         <div class="day-side">
-          <h2 class="day-title" id="dayDateLabel">Today</h2>
-
           <div class="net-card">
             <div class="net-stat"><span class="net-label">Eaten</span><span class="net-value" id="totalCalories">0</span><span class="net-unit">in</span></div>
             <div class="net-divider">−</div>
@@ -92,7 +100,7 @@
             <div class="budget-labels"><span id="budgetTarget">Target —</span><span class="budget-left" id="budgetLeft">—</span></div>
           </div>
 
-          <div class="day-controls">
+          <div class="day-controls" id="secBurned">
             <label class="control-field">
               <span>Burned today (from watch)</span>
               <div class="input-row"><input type="number" id="burnedInput" placeholder="e.g. 2100" step="10" /><span class="unit-suffix">kcal</span></div>
@@ -112,6 +120,7 @@
           <div id="fastingWidget" class="fasting-widget"></div>
 
           <!-- Water -->
+          <div id="secWater">
           <div class="section-title"><h3>Water</h3></div>
           <div class="water-module">
             <div class="water-ring-wrap">
@@ -136,6 +145,7 @@
             </div>
           </div>
           <div id="waterLog" class="water-log"></div>
+          </div><!-- /secWater -->
 
           <!-- Food -->
           <div class="section-title">
@@ -146,8 +156,10 @@
           <div id="foodList" class="log-list"></div>
 
           <!-- Reflection -->
+          <div id="secReflection">
           <div class="section-title"><h3>Reflection</h3></div>
           <textarea id="dayNote" class="day-note" placeholder="How did today go? Energy, cravings, mood, training, sleep…"></textarea>
+          </div><!-- /secReflection -->
         </div>
       </div>
 
@@ -217,6 +229,12 @@
         <div class="summary-stat"><span class="stat-label">Food / Drink</span><span class="stat-value" id="moneySplit">—</span><span class="stat-unit">makan · minum</span></div>
       </div>
 
+      <div class="money-budget">
+        <div class="budget-head"><span>Food budget · this month</span><button id="editFoodBudgetBtn" class="text-btn">edit</button></div>
+        <div class="budget-bar"><div class="budget-fill" id="foodBudgetFill"></div></div>
+        <div class="budget-labels"><span id="foodBudgetTarget">No budget set</span><span class="budget-left" id="foodBudgetLeft">—</span></div>
+      </div>
+
       <div class="section-title">
         <h3>Spending trend</h3>
         <div class="range-toggle">
@@ -226,6 +244,9 @@
         </div>
       </div>
       <div class="chart-wrap"><canvas id="moneyChart"></canvas></div>
+
+      <div class="section-title"><h3>Insights <span class="insights-range" id="insightsRange"></span></h3></div>
+      <div id="moneyInsights" class="insights-list"></div>
 
       <div class="section-title">
         <h3>Recap to planner</h3>
@@ -274,14 +295,18 @@
       <div id="weightModal" class="modal" hidden>
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Log weight &amp; body data</h3>
+            <h3 id="weightModalTitle">Log weight &amp; body data</h3>
             <button class="close-btn" data-close="weightModal">✕</button>
           </div>
           <div class="modal-body">
             <label class="field"><span>Weight (kg) <em>*</em></span><input type="number" id="wtWeight" step="0.1" placeholder="68.5" /></label>
             <label class="field"><span>Body fat % <em>(optional)</em></span><input type="number" id="wtBodyFat" step="0.1" placeholder="18" /></label>
             <label class="field"><span>Waist (cm) <em>(optional)</em></span><input type="number" id="wtWaist" step="0.5" placeholder="78" /></label>
-            <label class="field"><span>Sleep last night (hours)</span><input type="number" id="wtSleep" step="0.25" placeholder="7.5" /></label>
+            <div class="field-row">
+              <label class="field grow"><span>Went to sleep</span><input type="time" id="wtSleepStart" /></label>
+              <label class="field grow"><span>Woke up</span><input type="time" id="wtSleepEnd" /></label>
+            </div>
+            <div class="sleep-readout" id="wtSleepReadout">— h slept</div>
             <label class="field"><span>Energy today (1–10)</span><input type="number" id="wtEnergy" min="1" max="10" step="1" placeholder="7" /></label>
             <label class="field"><span>Exercise today (minutes)</span><input type="number" id="wtExercise" step="5" placeholder="60" /></label>
             <label class="field"><span>Steps (manual, optional)</span><input type="number" id="wtSteps" step="100" placeholder="8000" /></label>
@@ -337,6 +362,13 @@
           <label class="field grow"><span>Window closes</span><input type="time" id="pfFastEnd" value="14:30" /></label>
         </div>
 
+        <div class="divider-label">Show on Day tab</div>
+        <p class="hint">Hide sections you don't use to keep the Day tab short.</p>
+        <label class="field checkbox-field"><input type="checkbox" id="pfSecBurned" /><span>Burned / sport</span></label>
+        <label class="field checkbox-field"><input type="checkbox" id="pfSecFasting" /><span>Fasting window</span></label>
+        <label class="field checkbox-field"><input type="checkbox" id="pfSecWater" /><span>Water</span></label>
+        <label class="field checkbox-field"><input type="checkbox" id="pfSecReflection" /><span>Reflection</span></label>
+
         <div class="target-preview">
           <div><span>BMR (at rest)</span><strong id="pfBmr">—</strong></div>
           <div><span>Maintenance (TDEE)</span><strong id="pfTdee">—</strong></div>
@@ -355,11 +387,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- App modules (order matters) -->
-  <script src="js/storage.js?v=9"></script>
-  <script src="js/calories.js?v=9"></script>
-  <script src="js/day.js?v=9"></script>
-  <script src="js/money.js?v=9"></script>
-  <script src="js/weight.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="js/storage.js?v=11"></script>
+  <script src="js/calories.js?v=11"></script>
+  <script src="js/day.js?v=11"></script>
+  <script src="js/money.js?v=11"></script>
+  <script src="js/weight.js?v=11"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>

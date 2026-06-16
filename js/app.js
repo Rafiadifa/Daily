@@ -119,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
     pf('pfFastEnabled').checked = !!w.enabled;
     pf('pfFastStart').value = w.start || '06:30';
     pf('pfFastEnd').value = w.end || '14:30';
+    const sec = Storage.getSetting('daySections', {});
+    pf('pfSecBurned').checked = sec.burned !== false;
+    pf('pfSecFasting').checked = sec.fasting !== false;
+    pf('pfSecWater').checked = sec.water !== false;
+    pf('pfSecReflection').checked = sec.reflection !== false;
     updateProfilePreview();
   }
   function readProfileForm() {
@@ -149,6 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
       enabled: pf('pfFastEnabled').checked,
       start: pf('pfFastStart').value || '06:30',
       end: pf('pfFastEnd').value || '14:30',
+    });
+    Storage.setSetting('daySections', {
+      burned: pf('pfSecBurned').checked,
+      fasting: pf('pfSecFasting').checked,
+      water: pf('pfSecWater').checked,
+      reflection: pf('pfSecReflection').checked,
     });
     pf('profileModal').hidden = true;
     Day.render();

@@ -107,6 +107,11 @@ const Storage = (() => {
     const all = read(KEYS.water, []).filter(e => e.id !== id);
     write(KEYS.water, all);
   };
+  const updateWater = (id, patch) => {
+    const all = read(KEYS.water, []);
+    const idx = all.findIndex(e => e.id === id);
+    if (idx >= 0) { all[idx] = { ...all[idx], ...patch }; write(KEYS.water, all); }
+  };
   const getWaterTotal = (dateStr) => {
     return getWater(dateStr).reduce((sum, e) => sum + e.amount, 0);
   };
@@ -221,7 +226,7 @@ const Storage = (() => {
   return {
     getFoodLogs, addFoodLog, saveFoodLog, deleteFoodLog, getFoodLogById, getFoodTotalsByDate,
     getWeights, addWeight, deleteWeight,
-    getWater, addWater, deleteWater, getWaterTotal, getWaterTotalsByDate,
+    getWater, addWater, deleteWater, updateWater, getWaterTotal, getWaterTotalsByDate,
     getDailySummary, setDailySummary,
     getSetting, setSetting,
     getProfile, setProfile, getEffectiveWeight,

@@ -24,10 +24,12 @@ const Money = (() => {
         btn.classList.add('active');
         currentRange = btn.dataset.range;
         renderChart();
+        renderInsights();
       });
     });
     $('copyRecapBtn').addEventListener('click', copyRows);
     $('showRecapped').addEventListener('change', renderRecap);
+    $('editFoodBudgetBtn').addEventListener('click', editBudget);
   }
 
   // All food entries that carry a price, oldest → newest.
@@ -44,7 +46,89 @@ const Money = (() => {
     return formatDate(d);
   }
 
-  function render() { renderSummary(); renderChart(); renderRecap(); }
+  function render() { renderSummary(); renderBudget(); renderChart(); renderInsights(); renderRecap(); }
+
+  const RANGE_LABEL = { week: 'last 7 days', month: 'last 30 days', all: 'all time' };
+
+  // ---- Monthly food budget (¥) ----
+  function editBudget() {
+    const cur = Storage.getSetting('foodBudgetMonthly', '');
+    const n = prompt('Monthly food budget (¥) — blank to clear:', cur || '');
+    if (n === null) return;
+    const v = parseFloat(n);
+    Storage.setSetting('foodBudgetMonthly', (n.trim() === '' || isNaN(v) || v <= 0) ? null : v);
+    renderBudget();
+  }
+
+  function renderBudget() {
+    const budget = Storage.getSetting('foodBudgetMonthly', null);
+    const ym = formatDate(new Date()).slice(0, 7);
+    const spent = pricedEntries().filter(e => e.date.slice(0, 7) === ym).reduce((s, e) => s + e.price, 0);
+    const fill = $('foodBudgetFill');
+    if (!budget) {
+      fill.style.width = '0%';
+      fill.className = 'budget-fill';
+      $('foodBudgetTarget').textContent = 'No budget set';
+      $('foodBudgetLeft').textContent = `¥${spent.toFixed(0)} spent`;
+      $('foodBudgetLeft').className = 'budget-left';
+      return;
+    }
+    const pct = Math.min(100, Math.round(spent / budget * 100));
+    const left = budget - spent;
+    // days left in the current month (incl. today) → pace guidance
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
+    fill.style.width = pct + '%';
+    fill.className = 'budget-fill' + (spent > budget ? ' over' : '');
+    $('foodBudgetTarget').textContent = `¥${spent.toFixed(0)} / ¥${budget.toFixed(0)}`;
+    $('foodBudgetLeft').textContent = left >= 0
+      ? `¥${left.toFixed(0)} left · ¥${(left / daysLeft).toFixed(0)}/day`
+      : `¥${Math.abs(left).toFixed(0)} over`;
+    $('foodBudgetLeft').className = 'budget-left' + (left < 0 ? ' over' : '');
+  }
+
+  // ---- Best-value / pattern insights over the selected range ----
+  function renderInsights() {
+    $('insightsRange').textContent = '· ' + RANGE_LABEL[currentRange];
+    const cut = rangeCutoff();
+    const rows = pricedEntries().filter(e => e.date >= cut);
+    const box = $('moneyInsights');
+    if (rows.length === 0) {
+      box.innerHTML = `<div class="empty-state small">No priced food in this range yet.</div>`;
+      return;
+    }
+    const items = [];
+
+    // best value: most kcal per ¥ (needs calories + price > 0)
+    const valued = rows.filter(e => e.calories > 0 && e.price > 0);
+    if (valued.length) {
+      const best = valued.reduce((a, b) => (b.calories / b.price > a.calories / a.price ? b : a));
+      items.push(['💎', 'Best value', `${escapeHtml(best.name)} — ${best.calories} kcal for ¥${best.price} (${Math.round(best.calories / best.price)} kcal/¥)`]);
+    }
+    // priciest single meal
+    const priciest = rows.reduce((a, b) => (b.price > a.price ? b : a));
+    items.push(['💸', 'Priciest item', `${escapeHtml(priciest.name)} — ¥${priciest.price.toFixed(2)}`]);
+
+    // biggest-spend day
+    const byDate = {};
+    rows.forEach(e => { byDate[e.date] = (byDate[e.date] || 0) + e.price; });
+    const topDay = Object.entries(byDate).sort((a, b) => b[1] - a[1])[0];
+    items.push(['📅', 'Biggest day', `${prettyDate(topDay[0])} — ¥${topDay[1].toFixed(2)}`]);
+
+    // average per day that had spending
+    const dayCount = Object.keys(byDate).length;
+    const total = rows.reduce((s, e) => s + e.price, 0);
+    items.push(['📊', 'Avg / logged day', `¥${(total / dayCount).toFixed(2)} across ${dayCount} day${dayCount > 1 ? 's' : ''}`]);
+
+    // drink share of spend
+    const minum = rows.filter(e => e.payCategory === 'Minum').reduce((s, e) => s + e.price, 0);
+    if (total > 0) items.push(['🥤', 'Drinks', `${Math.round(minum / total * 100)}% of food spend (¥${minum.toFixed(0)})`]);
+
+    box.innerHTML = items.map(([icon, label, txt]) =>
+      `<div class="insight-row"><span class="insight-icon">${icon}</span><div class="insight-body"><span class="insight-label">${label}</span><span class="insight-text">${txt}</span></div></div>`
+    ).join('');
+  }
 
   // ---- Summary cards ----
   function renderSummary() {

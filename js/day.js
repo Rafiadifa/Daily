@@ -52,6 +52,11 @@ const Day = (() => {
   function init() {
     $('dayCalPrev').addEventListener('click', () => shiftMonth(-1));
     $('dayCalNext').addEventListener('click', () => shiftMonth(1));
+    $('dayPrev').addEventListener('click', () => shiftDay(-1));
+    $('dayNext').addEventListener('click', () => shiftDay(1));
+    $('calToggle').addEventListener('click', toggleCalendar);
+    // On a wide screen there's room — show the month by default.
+    if (window.innerWidth >= 800) setCalendarOpen(true);
 
     $('burnedInput').addEventListener('input', () => {
       clearTimeout(burnedSaveTimer);
@@ -101,7 +106,19 @@ const Day = (() => {
   }
 
   function shiftMonth(d) { viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+d, 1); renderCalendar(); }
-  function selectDate(ds) { selectedDate = ds; render(); }
+  function selectDate(ds) { selectedDate = ds; viewMonth = parseDate(ds); setCalendarOpen(false); render(); }
+  // Step the selected day by ±1; keep the month grid aligned to it.
+  function shiftDay(delta) {
+    const d = parseDate(selectedDate); d.setDate(d.getDate() + delta);
+    selectedDate = formatDate(d); viewMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+    render();
+  }
+  function setCalendarOpen(open) {
+    $('calCollapse').hidden = !open;
+    $('calToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('calToggle').classList.toggle('open', open);
+  }
+  function toggleCalendar() { setCalendarOpen($('calCollapse').hidden); }
 
   // ============================================================
   // Weekly summary (rolling last 7 days)
@@ -176,6 +193,17 @@ const Day = (() => {
     $('sportSelect').value = sum.sport || 'none';
     $('dayNote').value = sum.note || '';
     renderNetCard(); renderBudget(); renderWater(); renderFasting(); renderFavorites(); renderList();
+    applyDaySections();
+  }
+
+  // Hide Day-tab sections the user has turned off (default: all visible).
+  function applyDaySections() {
+    const d = Storage.getSetting('daySections', {});
+    const set = (id, key) => { const el = $(id); if (el) el.style.display = (d[key] === false) ? 'none' : ''; };
+    set('secBurned', 'burned');
+    set('fastingWidget', 'fasting');
+    set('secWater', 'water');
+    set('secReflection', 'reflection');
   }
 
   function renderNetCard() {
@@ -217,7 +245,17 @@ const Day = (() => {
     const list = $('waterLog');
     if (entries.length === 0) list.innerHTML = `<div class="empty-state small">No water yet.</div>`;
     else list.innerHTML = entries.map(e => `
-      <div class="water-chip"><span>${e.amount}ml</span><small>${e.time||''}</small><button class="wlog-del" data-id="${e.id}">×</button></div>`).join('');
+      <div class="water-chip"><button class="wedit" data-id="${e.id}" title="Edit amount">${e.amount}ml</button><small>${e.time||''}</small><button class="wlog-del" data-id="${e.id}">×</button></div>`).join('');
+    list.querySelectorAll('.wedit').forEach(b =>
+      b.addEventListener('click', () => {
+        const id = parseInt(b.dataset.id);
+        const cur = Storage.getWater(selectedDate).find(w => w.id === id);
+        const n = prompt('Edit amount (ml):', cur ? cur.amount : '');
+        if (n === null) return;
+        const v = parseInt(n);
+        if (!v || v < 1) { alert('Enter a valid amount in ml.'); return; }
+        Storage.updateWater(id, { amount: v }); renderWater(); renderWeekSummary();
+      }));
     list.querySelectorAll('.wlog-del').forEach(b =>
       b.addEventListener('click', () => { Storage.deleteWater(parseInt(b.dataset.id)); renderWater(); renderWeekSummary(); }));
   }
