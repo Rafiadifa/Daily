@@ -54,9 +54,7 @@ const Day = (() => {
     $('dayCalNext').addEventListener('click', () => shiftMonth(1));
     $('dayPrev').addEventListener('click', () => shiftDay(-1));
     $('dayNext').addEventListener('click', () => shiftDay(1));
-    $('calToggle').addEventListener('click', toggleCalendar);
-    // On a wide screen there's room — show the month by default.
-    if (window.innerWidth >= 800) setCalendarOpen(true);
+    initCollapsibles();
 
     $('burnedInput').addEventListener('input', () => {
       clearTimeout(burnedSaveTimer);
@@ -106,19 +104,32 @@ const Day = (() => {
   }
 
   function shiftMonth(d) { viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+d, 1); renderCalendar(); }
-  function selectDate(ds) { selectedDate = ds; viewMonth = parseDate(ds); setCalendarOpen(false); render(); }
+  function selectDate(ds) { selectedDate = ds; viewMonth = parseDate(ds); render(); }
   // Step the selected day by ±1; keep the month grid aligned to it.
   function shiftDay(delta) {
     const d = parseDate(selectedDate); d.setDate(d.getDate() + delta);
     selectedDate = formatDate(d); viewMonth = new Date(d.getFullYear(), d.getMonth(), 1);
     render();
   }
-  function setCalendarOpen(open) {
-    $('calCollapse').hidden = !open;
-    $('calToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
-    $('calToggle').classList.toggle('open', open);
+
+  // Generic collapsible section headers (persist open/closed in settings).
+  function initCollapsibles() {
+    const state = Storage.getSetting('collapsed', {});
+    document.querySelectorAll('.section-title.collapsible').forEach(head => {
+      const key = head.dataset.toggle;
+      const body = document.getElementById(head.dataset.body);
+      const def = head.dataset.default === 'collapsed';
+      const collapsed = state[key] !== undefined ? state[key] : def;
+      const apply = (c) => { head.classList.toggle('collapsed', c); if (body) body.hidden = c; };
+      apply(collapsed);
+      head.addEventListener('click', () => {
+        const c = !head.classList.contains('collapsed');
+        apply(c);
+        const cur = Storage.getSetting('collapsed', {});
+        cur[key] = c; Storage.setSetting('collapsed', cur);
+      });
+    });
   }
-  function toggleCalendar() { setCalendarOpen($('calCollapse').hidden); }
 
   // ============================================================
   // Weekly summary (rolling last 7 days)
@@ -192,6 +203,7 @@ const Day = (() => {
     $('burnedInput').value = sum.caloriesBurned ?? '';
     $('sportSelect').value = sum.sport || 'none';
     $('dayNote').value = sum.note || '';
+    const ns = $('noteSummary'); if (ns) ns.textContent = (sum.note && sum.note.trim()) ? '· written' : '';
     renderNetCard(); renderBudget(); renderWater(); renderFasting(); renderFavorites(); renderList();
     applyDaySections();
   }
@@ -240,13 +252,14 @@ const Day = (() => {
     $('waterRingProgress').style.strokeDashoffset = WATER_RING_C * (1 - pct/100);
     $('waterRingMl').textContent = total;
     $('waterRingGoal').textContent = `of ${goal}`;
-    // log
+    const summ = $('waterSummary'); if (summ) summ.textContent = `${total} / ${goal} ml`;
+    // log — both amount and time are tap-to-edit
     const entries = Storage.getWater(selectedDate).slice().reverse();
     const list = $('waterLog');
     if (entries.length === 0) list.innerHTML = `<div class="empty-state small">No water yet.</div>`;
     else list.innerHTML = entries.map(e => `
-      <div class="water-chip"><button class="wedit" data-id="${e.id}" title="Edit amount">${e.amount}ml</button><small>${e.time||''}</small><button class="wlog-del" data-id="${e.id}">×</button></div>`).join('');
-    list.querySelectorAll('.wedit').forEach(b =>
+      <div class="water-chip"><button class="wedit-amt" data-id="${e.id}" title="Edit amount">${e.amount}ml</button><button class="wedit-time" data-id="${e.id}" title="Edit time">${e.time||'--:--'}</button><button class="wlog-del" data-id="${e.id}">×</button></div>`).join('');
+    list.querySelectorAll('.wedit-amt').forEach(b =>
       b.addEventListener('click', () => {
         const id = parseInt(b.dataset.id);
         const cur = Storage.getWater(selectedDate).find(w => w.id === id);
@@ -255,6 +268,16 @@ const Day = (() => {
         const v = parseInt(n);
         if (!v || v < 1) { alert('Enter a valid amount in ml.'); return; }
         Storage.updateWater(id, { amount: v }); renderWater(); renderWeekSummary();
+      }));
+    list.querySelectorAll('.wedit-time').forEach(b =>
+      b.addEventListener('click', () => {
+        const id = parseInt(b.dataset.id);
+        const cur = Storage.getWater(selectedDate).find(w => w.id === id);
+        const t = prompt('Edit time (HH:MM, 24-hour):', cur ? (cur.time || '') : '');
+        if (t === null) return;
+        const v = t.trim();
+        if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) { alert('Enter a valid time like 14:30.'); return; }
+        Storage.updateWater(id, { time: v.padStart(5, '0') }); renderWater();
       }));
     list.querySelectorAll('.wlog-del').forEach(b =>
       b.addEventListener('click', () => { Storage.deleteWater(parseInt(b.dataset.id)); renderWater(); renderWeekSummary(); }));
@@ -300,9 +323,11 @@ const Day = (() => {
   // ---- Favorites ----
   function renderFavorites() {
     const favs = Storage.getFavorites();
+    const section = $('favSection');
     const row = $('favoritesRow');
-    if (favs.length === 0) { row.innerHTML = ''; row.classList.add('empty'); return; }
-    row.classList.remove('empty');
+    if (favs.length === 0) { if (section) section.hidden = true; row.innerHTML = ''; return; }
+    if (section) section.hidden = false;
+    const cnt = $('favCount'); if (cnt) cnt.textContent = favs.length;
     row.innerHTML = favs.map(f => {
       const total = Calories.mealTotal(f.items);
       return `<div class="fav-chip" data-fav="${f.id}"><span class="fav-name">${escapeHtml(f.name)}</span><span class="fav-cal">${total}</span><button class="fav-del" data-del="${f.id}" title="Remove favorite">×</button></div>`;

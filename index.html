@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=11" />
+  <link rel="stylesheet" href="css/styles.css?v=12" />
 </head>
 <body>
   <header class="app-header">
@@ -61,32 +61,28 @@
 
       <div class="cal-layout">
         <div class="cal-side">
-          <div class="date-bar">
-            <button class="day-nav" id="dayPrev" title="Previous day">‹</button>
-            <button class="date-bar-label" id="calToggle" aria-expanded="false">
-              <span id="dayDateLabel">Today</span>
-              <span class="chev">▾</span>
-            </button>
-            <button class="day-nav" id="dayNext" title="Next day">›</button>
+          <div class="cal-header">
+            <button class="day-nav" id="dayCalPrev">‹</button>
+            <h2 class="cal-month" id="dayCalMonth">—</h2>
+            <button class="day-nav" id="dayCalNext">›</button>
           </div>
-          <div class="cal-collapse" id="calCollapse" hidden>
-            <div class="cal-header">
-              <button class="day-nav" id="dayCalPrev">‹</button>
-              <h2 class="cal-month" id="dayCalMonth">—</h2>
-              <button class="day-nav" id="dayCalNext">›</button>
-            </div>
-            <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-            <div class="cal-grid" id="dayCalGrid"></div>
-            <div class="cal-legend">
-              <span class="legend-item"><span class="legend-dot dot-low"></span>&lt;1500</span>
-              <span class="legend-item"><span class="legend-dot dot-mid"></span>1500–2500</span>
-              <span class="legend-item"><span class="legend-dot dot-high"></span>&gt;2500</span>
-              <span class="legend-item"><span class="activity-dot static"></span>trained</span>
-            </div>
+          <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          <div class="cal-grid" id="dayCalGrid"></div>
+          <div class="cal-legend">
+            <span class="legend-item"><span class="legend-dot dot-low"></span>&lt;1500</span>
+            <span class="legend-item"><span class="legend-dot dot-mid"></span>1500–2500</span>
+            <span class="legend-item"><span class="legend-dot dot-high"></span>&gt;2500</span>
+            <span class="legend-item"><span class="activity-dot static"></span>trained</span>
           </div>
         </div>
 
         <div class="day-side">
+          <div class="day-head">
+            <button class="day-nav" id="dayPrev" title="Previous day">‹</button>
+            <h2 class="day-title" id="dayDateLabel">Today</h2>
+            <button class="day-nav" id="dayNext" title="Next day">›</button>
+          </div>
+
           <div class="net-card">
             <div class="net-stat"><span class="net-label">Eaten</span><span class="net-value" id="totalCalories">0</span><span class="net-unit">in</span></div>
             <div class="net-divider">−</div>
@@ -121,7 +117,11 @@
 
           <!-- Water -->
           <div id="secWater">
-          <div class="section-title"><h3>Water</h3></div>
+          <div class="section-title collapsible" data-toggle="water" data-body="secWaterBody">
+            <h3>Water <span class="sec-summary" id="waterSummary"></span></h3>
+            <span class="chev">▾</span>
+          </div>
+          <div id="secWaterBody">
           <div class="water-module">
             <div class="water-ring-wrap">
               <svg class="water-ring" viewBox="0 0 100 100">
@@ -145,6 +145,7 @@
             </div>
           </div>
           <div id="waterLog" class="water-log"></div>
+          </div><!-- /secWaterBody -->
           </div><!-- /secWater -->
 
           <!-- Food -->
@@ -152,13 +153,24 @@
             <h3>Food</h3>
             <button id="addFoodBtn" class="primary-btn">+ Add food</button>
           </div>
-          <div id="favoritesRow" class="favorites-row empty"></div>
+          <div id="favSection" hidden>
+            <div class="section-title sub collapsible collapsed" data-toggle="favorites" data-body="favBody" data-default="collapsed">
+              <h3>⭐ Favorites <span class="sec-count" id="favCount"></span></h3>
+              <span class="chev">▾</span>
+            </div>
+            <div id="favBody"><div id="favoritesRow" class="favorites-row"></div></div>
+          </div>
           <div id="foodList" class="log-list"></div>
 
           <!-- Reflection -->
           <div id="secReflection">
-          <div class="section-title"><h3>Reflection</h3></div>
+          <div class="section-title collapsible" data-toggle="reflection" data-body="secReflectionBody">
+            <h3>Reflection <span class="sec-summary" id="noteSummary"></span></h3>
+            <span class="chev">▾</span>
+          </div>
+          <div id="secReflectionBody">
           <textarea id="dayNote" class="day-note" placeholder="How did today go? Energy, cravings, mood, training, sleep…"></textarea>
+          </div><!-- /secReflectionBody -->
           </div><!-- /secReflection -->
         </div>
       </div>
@@ -387,11 +399,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- App modules (order matters) -->
-  <script src="js/storage.js?v=11"></script>
-  <script src="js/calories.js?v=11"></script>
-  <script src="js/day.js?v=11"></script>
-  <script src="js/money.js?v=11"></script>
-  <script src="js/weight.js?v=11"></script>
-  <script src="js/app.js?v=11"></script>
+  <script src="js/storage.js?v=12"></script>
+  <script src="js/calories.js?v=12"></script>
+  <script src="js/day.js?v=12"></script>
+  <script src="js/money.js?v=12"></script>
+  <script src="js/weight.js?v=12"></script>
+  <script src="js/app.js?v=12"></script>
 </body>
 </html>
