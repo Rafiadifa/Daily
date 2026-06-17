@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=12" />
+  <link rel="stylesheet" href="css/styles.css?v=13" />
 </head>
 <body>
   <header class="app-header">
@@ -63,11 +63,14 @@
         <div class="cal-side">
           <div class="cal-header">
             <button class="day-nav" id="dayCalPrev">‹</button>
-            <h2 class="cal-month" id="dayCalMonth">—</h2>
+            <div class="cal-head-center">
+              <h2 class="cal-month" id="dayCalMonth">—</h2>
+              <button class="cal-mode-btn" id="calModeBtn">month view ▾</button>
+            </div>
             <button class="day-nav" id="dayCalNext">›</button>
           </div>
           <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
-          <div class="cal-grid" id="dayCalGrid"></div>
+          <div class="cal-grid week" id="dayCalGrid"></div>
           <div class="cal-legend">
             <span class="legend-item"><span class="legend-dot dot-low"></span>&lt;1500</span>
             <span class="legend-item"><span class="legend-dot dot-mid"></span>1500–2500</span>
@@ -301,7 +304,14 @@
       <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
 
       <div class="section-title"><h3>History</h3></div>
-      <div id="weightList" class="log-list"></div>
+      <div class="cal-header">
+        <button class="day-nav" id="wtCalPrev">‹</button>
+        <h2 class="cal-month" id="wtCalMonth">—</h2>
+        <button class="day-nav" id="wtCalNext">›</button>
+      </div>
+      <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+      <div class="cal-grid" id="wtCalGrid"></div>
+      <p class="hint">Tap a day to log or edit. Highlighted days have a weigh-in.</p>
 
       <!-- Weight Modal -->
       <div id="weightModal" class="modal" hidden>
@@ -325,6 +335,7 @@
             <label class="field"><span>Notes</span><textarea id="wtNotes" rows="2" placeholder="rest day, ramadhan fasting, dance class, etc."></textarea></label>
           </div>
           <div class="modal-footer">
+            <button id="deleteWeightBtn" class="text-btn danger" hidden>Delete</button>
             <button class="secondary-btn" data-close="weightModal">Cancel</button>
             <button id="saveWeightBtn" class="primary-btn">Save</button>
           </div>
@@ -399,11 +410,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- App modules (order matters) -->
-  <script src="js/storage.js?v=12"></script>
-  <script src="js/calories.js?v=12"></script>
-  <script src="js/day.js?v=12"></script>
-  <script src="js/money.js?v=12"></script>
-  <script src="js/weight.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="js/storage.js?v=13"></script>
+  <script src="js/calories.js?v=13"></script>
+  <script src="js/day.js?v=13"></script>
+  <script src="js/money.js?v=13"></script>
+  <script src="js/weight.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
 </body>
 </html>

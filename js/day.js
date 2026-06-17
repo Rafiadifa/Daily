@@ -9,6 +9,7 @@
 const Day = (() => {
   let selectedDate = formatDate(new Date());
   let viewMonth = new Date();
+  let calMode = 'week'; // 'week' strip or full 'month' grid
   let currentPhoto = null;
   let currentItems = [];
   let editingEntry = null;
@@ -50,8 +51,10 @@ const Day = (() => {
 
   // ============================================================
   function init() {
-    $('dayCalPrev').addEventListener('click', () => shiftMonth(-1));
-    $('dayCalNext').addEventListener('click', () => shiftMonth(1));
+    calMode = Storage.getSetting('calMode', 'week');
+    $('dayCalPrev').addEventListener('click', () => calMode === 'week' ? shiftDay(-7) : shiftMonth(-1));
+    $('dayCalNext').addEventListener('click', () => calMode === 'week' ? shiftDay(7) : shiftMonth(1));
+    $('calModeBtn').addEventListener('click', toggleCalMode);
     $('dayPrev').addEventListener('click', () => shiftDay(-1));
     $('dayNext').addEventListener('click', () => shiftDay(1));
     initCollapsibles();
@@ -167,29 +170,50 @@ const Day = (() => {
   // ============================================================
   // Calendar
   // ============================================================
+  function toggleCalMode() {
+    calMode = calMode === 'week' ? 'month' : 'week';
+    Storage.setSetting('calMode', calMode);
+    renderCalendar();
+  }
+
+  // One day cell (used by both the week strip and the month grid).
+  function dayCellHtml(dateObj, totals, today) {
+    const ds = formatDate(dateObj);
+    const total = totals[ds] || 0;
+    const tier = total===0?'':total<1500?'tier-low':total<2500?'tier-mid':'tier-high';
+    const cls = ['cal-cell',tier,ds===today?'today':'',ds===selectedDate?'selected':''].filter(Boolean).join(' ');
+    const sum = Storage.getDailySummary(ds);
+    const dot = sum.sport && sum.sport!=='none' ? '<span class="activity-dot"></span>' : '';
+    return `<div class="${cls}" data-date="${ds}">${dot}<span class="day-num">${dateObj.getDate()}</span>${total>0?`<span class="day-val">${total}</span>`:''}</div>`;
+  }
+
   function renderCalendar() {
     const grid = $('dayCalGrid');
-    const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
-    const firstWeekday = (new Date(year, month, 1).getDay()+6)%7;
-    const daysInMonth = new Date(year, month+1, 0).getDate();
-    $('dayCalMonth').textContent = monthLabel(viewMonth);
     const totals = Storage.getFoodTotalsByDate();
     const today = formatDate(new Date());
+    const week = calMode === 'week';
+    grid.classList.toggle('week', week);
+    $('calModeBtn').textContent = week ? 'month view ▾' : 'week view ▴';
 
     let html = '';
-    const prevLast = new Date(year, month, 0).getDate();
-    for (let i=firstWeekday-1;i>=0;i--) html += `<div class="cal-cell off-month"><span class="day-num">${prevLast-i}</span></div>`;
-    for (let day=1; day<=daysInMonth; day++) {
-      const ds = formatDate(new Date(year, month, day));
-      const total = totals[ds] || 0;
-      const tier = total===0?'':total<1500?'tier-low':total<2500?'tier-mid':'tier-high';
-      const cls = ['cal-cell',tier,ds===today?'today':'',ds===selectedDate?'selected':''].filter(Boolean).join(' ');
-      const sum = Storage.getDailySummary(ds);
-      const dot = sum.sport && sum.sport!=='none' ? '<span class="activity-dot"></span>' : '';
-      html += `<div class="${cls}" data-date="${ds}">${dot}<span class="day-num">${day}</span>${total>0?`<span class="day-val">${total}</span>`:''}</div>`;
+    if (week) {
+      // strip: the 7 days (Mon–Sun) of the week containing selectedDate
+      const sel = parseDate(selectedDate);
+      const dow = (sel.getDay()+6)%7;
+      const start = new Date(sel); start.setDate(sel.getDate()-dow);
+      $('dayCalMonth').textContent = monthLabel(sel);
+      for (let i=0;i<7;i++) html += dayCellHtml(new Date(start.getFullYear(), start.getMonth(), start.getDate()+i), totals, today);
+    } else {
+      const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
+      const firstWeekday = (new Date(year, month, 1).getDay()+6)%7;
+      const daysInMonth = new Date(year, month+1, 0).getDate();
+      $('dayCalMonth').textContent = monthLabel(viewMonth);
+      const prevLast = new Date(year, month, 0).getDate();
+      for (let i=firstWeekday-1;i>=0;i--) html += `<div class="cal-cell off-month"><span class="day-num">${prevLast-i}</span></div>`;
+      for (let day=1; day<=daysInMonth; day++) html += dayCellHtml(new Date(year, month, day), totals, today);
+      const trailing = (7 - ((firstWeekday+daysInMonth)%7))%7;
+      for (let i=1;i<=trailing;i++) html += `<div class="cal-cell off-month"><span class="day-num">${i}</span></div>`;
     }
-    const trailing = (7 - ((firstWeekday+daysInMonth)%7))%7;
-    for (let i=1;i<=trailing;i++) html += `<div class="cal-cell off-month"><span class="day-num">${i}</span></div>`;
     grid.innerHTML = html;
     grid.querySelectorAll('.cal-cell[data-date]').forEach(c => c.addEventListener('click', () => selectDate(c.dataset.date)));
   }

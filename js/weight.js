@@ -8,6 +8,7 @@ const WeightTab = (() => {
   let currentRange = 'week';
   let currentMetric = 'weight'; // weight | waist | bodyFat
   let editingDate = null;       // which date the modal is logging/editing
+  let wtViewMonth = new Date(); // month shown in the history calendar
   const $ = (id) => document.getElementById(id);
 
   // Hours slept from two HH:MM times, handling crossing midnight.
@@ -27,8 +28,11 @@ const WeightTab = (() => {
   function init() {
     $('addWeightBtn').addEventListener('click', () => openModal(null));
     $('saveWeightBtn').addEventListener('click', saveWeight);
+    $('deleteWeightBtn').addEventListener('click', deleteEntry);
     $('wtSleepStart').addEventListener('input', updateSleepReadout);
     $('wtSleepEnd').addEventListener('input', updateSleepReadout);
+    $('wtCalPrev').addEventListener('click', () => { wtViewMonth = new Date(wtViewMonth.getFullYear(), wtViewMonth.getMonth()-1, 1); renderCalendar(); });
+    $('wtCalNext').addEventListener('click', () => { wtViewMonth = new Date(wtViewMonth.getFullYear(), wtViewMonth.getMonth()+1, 1); renderCalendar(); });
 
     document.querySelectorAll('.range-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -67,8 +71,17 @@ const WeightTab = (() => {
     $('wtExercise').value = existing?.exercise || '';
     $('wtSteps').value = existing?.steps || '';
     $('wtNotes').value = existing?.notes || '';
+    $('deleteWeightBtn').hidden = !existing;
     updateSleepReadout();
     $('weightModal').hidden = false;
+  }
+
+  function deleteEntry() {
+    if (!editingDate) return;
+    if (!confirm('Delete this entry?')) return;
+    Storage.deleteWeight(editingDate);
+    $('weightModal').hidden = true;
+    render();
   }
 
   function saveWeight() {
@@ -124,7 +137,7 @@ const WeightTab = (() => {
     }
 
     renderChart();
-    renderList();
+    renderCalendar();
   }
 
   function getRangeData() {
@@ -241,54 +254,32 @@ const WeightTab = (() => {
     });
   }
 
-  function renderList() {
-    const weights = Storage.getWeights();
-    const list = $('weightList');
-    if (weights.length === 0) {
-      list.innerHTML = `<div class="empty-state">No entries yet.</div>`;
-      return;
-    }
-    // most recent first
-    const sorted = [...weights].reverse().slice(0, 30);
-    list.innerHTML = sorted.map(e => {
-      const sleepTxt = e.sleep != null
-        ? `😴 ${e.sleep}h${e.sleepStart && e.sleepEnd ? ` (${e.sleepStart}→${e.sleepEnd})` : ''}`
-        : '';
-      return `
-      <div class="log-item editable" data-edit="${e.date}">
-        <div class="log-info">
-          <div class="log-name">${prettyDate(e.date)}</div>
-          <div class="log-meta">
-            ${e.bodyFat ? `<span>BF ${e.bodyFat}%</span>` : ''}
-            ${e.waist ? `<span>Waist ${e.waist}cm</span>` : ''}
-            ${sleepTxt ? `<span>${sleepTxt}</span>` : ''}
-            ${e.energy ? `<span>⚡ ${e.energy}/10</span>` : ''}
-            ${e.exercise ? `<span>🏃 ${e.exercise}min</span>` : ''}
-            ${e.steps ? `<span>${e.steps} steps</span>` : ''}
-          </div>
-          ${e.notes ? `<div class="log-meta" style="margin-top:4px;font-style:italic;">${escapeHtml(e.notes)}</div>` : ''}
-        </div>
-        <div class="log-cal" style="font-size:22px;">${e.weight.toFixed(1)}<small style="font-size:10px;color:var(--ink-faint);font-family:var(--font-mono);"> kg</small></div>
-        <button class="log-delete" data-date="${e.date}">×</button>
-      </div>`;
-    }).join('');
+  // Month heatmap: days with a weigh-in are marked + show the kg; tap to edit.
+  function renderCalendar() {
+    const grid = $('wtCalGrid');
+    const byDate = {};
+    Storage.getWeights().forEach(e => { byDate[e.date] = e; });
+    const year = wtViewMonth.getFullYear(), month = wtViewMonth.getMonth();
+    const firstWeekday = (new Date(year, month, 1).getDay()+6)%7;
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const today = formatDate(new Date());
+    $('wtCalMonth').textContent = monthLabel(wtViewMonth);
 
-    list.querySelectorAll('.log-item.editable').forEach(row => {
-      row.addEventListener('click', (ev) => {
-        if (ev.target.closest('.log-delete')) return;
-        openModal(row.dataset.edit);
-      });
-    });
-    list.querySelectorAll('.log-delete').forEach(btn => {
-      btn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        if (confirm('Delete this entry?')) {
-          Storage.deleteWeight(btn.dataset.date);
-          render();
-        }
-      });
-    });
+    let html = '';
+    const prevLast = new Date(year, month, 0).getDate();
+    for (let i=firstWeekday-1;i>=0;i--) html += `<div class="cal-cell off-month"><span class="day-num">${prevLast-i}</span></div>`;
+    for (let day=1; day<=daysInMonth; day++) {
+      const ds = formatDate(new Date(year, month, day));
+      const e = byDate[ds];
+      const cls = ['cal-cell', e ? 'has-entry' : '', ds===today?'today':''].filter(Boolean).join(' ');
+      html += `<div class="${cls}" data-date="${ds}"><span class="day-num">${day}</span>${e ? `<span class="day-val">${e.weight.toFixed(1)}</span>` : ''}</div>`;
+    }
+    const trailing = (7 - ((firstWeekday+daysInMonth)%7))%7;
+    for (let i=1;i<=trailing;i++) html += `<div class="cal-cell off-month"><span class="day-num">${i}</span></div>`;
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cal-cell[data-date]').forEach(c => c.addEventListener('click', () => openModal(c.dataset.date)));
   }
+
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({

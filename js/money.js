@@ -234,22 +234,47 @@ const Money = (() => {
       return;
     }
 
-    wrap.innerHTML = rows.map(e => `
+    // group by date (newest day first) so a long list stays organized
+    const groups = {};
+    rows.forEach(e => { (groups[e.date] = groups[e.date] || []).push(e); });
+    const dates = Object.keys(groups).sort().reverse();
+
+    wrap.innerHTML = dates.map(d => {
+      const items = groups[d];
+      const subtotal = items.reduce((s, e) => s + e.price, 0);
+      const allDone = items.every(e => e.recapped);
+      return `
+      <div class="recap-group${allDone ? ' done' : ''}" data-date="${d}">
+        <button class="recap-group-head" data-date="${d}">
+          <span class="rg-chev">▾</span>
+          <span class="rg-date">${prettyDate(d)}</span>
+          <span class="rg-sum">¥${subtotal.toFixed(2)} · ${items.length}</span>
+        </button>
+        <div class="recap-group-body">
+          ${items.map(rowHtml).join('')}
+        </div>
+      </div>`;
+    }).join('');
+
+    wrap.querySelectorAll('.recap-group-head').forEach(h =>
+      h.addEventListener('click', () => h.closest('.recap-group').classList.toggle('collapsed')));
+    wrap.querySelectorAll('.rc-cat').forEach(sel => sel.addEventListener('change', () => updateEntry(sel.dataset.id, { payCategory: sel.value })));
+    wrap.querySelectorAll('.rc-acc').forEach(sel => sel.addEventListener('change', () => updateEntry(sel.dataset.id, { account: sel.value })));
+  }
+
+  function rowHtml(e) {
+    return `
       <div class="recap-row ${e.recapped ? 'done' : ''}" data-id="${e.id}">
         <div class="rc-top">
-          <span class="rc-date">${e.date.slice(5)}</span>
           <span class="rc-name" title="${escapeAttr(e.name)}">${escapeHtml(e.name)}</span>
           <span class="rc-amt">¥${e.price.toFixed(2)}</span>
-          ${e.recapped ? '<span class="rc-flag">✓ copied</span>' : ''}
+          ${e.recapped ? '<span class="rc-flag">✓</span>' : ''}
         </div>
         <div class="rc-bottom">
           <select class="rc-cat" data-id="${e.id}"><option value="Makan" ${e.payCategory!=='Minum'?'selected':''}>Makan (food)</option><option value="Minum" ${e.payCategory==='Minum'?'selected':''}>Minum (drink)</option></select>
           <select class="rc-acc" data-id="${e.id}">${accountOptions(e.account || 'Student Card')}</select>
         </div>
-      </div>`).join('');
-
-    wrap.querySelectorAll('.rc-cat').forEach(sel => sel.addEventListener('change', () => updateEntry(sel.dataset.id, { payCategory: sel.value })));
-    wrap.querySelectorAll('.rc-acc').forEach(sel => sel.addEventListener('change', () => updateEntry(sel.dataset.id, { account: sel.value })));
+      </div>`;
   }
 
   function updateEntry(id, patch) {
