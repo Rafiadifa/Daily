@@ -16,7 +16,8 @@ const Money = (() => {
   const NA = '- not applicable -';
   let chartInstance = null;
   let currentRange = 'week';
-  let recapGroup = 'month'; // day | week | month — how the recap list is grouped
+  let recapDate = null;              // which day's rows the recap list shows
+  let recapViewMonth = new Date();   // month shown in the recap calendar
 
   function init() {
     document.querySelectorAll('.money-range-btn').forEach(btn => {
@@ -31,31 +32,8 @@ const Money = (() => {
     $('copyRecapBtn').addEventListener('click', copyRows);
     $('showRecapped').addEventListener('change', renderRecap);
     $('editFoodBudgetBtn').addEventListener('click', editBudget);
-
-    recapGroup = Storage.getSetting('recapGroup', 'month');
-    document.querySelectorAll('.recap-group-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.group === recapGroup);
-      btn.addEventListener('click', () => {
-        recapGroup = btn.dataset.group;
-        Storage.setSetting('recapGroup', recapGroup);
-        document.querySelectorAll('.recap-group-btn').forEach(b => b.classList.toggle('active', b === btn));
-        renderRecap();
-      });
-    });
-  }
-
-  // Group key + display label for a date, by the current grouping mode.
-  function groupOf(dateStr) {
-    if (recapGroup === 'month') {
-      return { key: dateStr.slice(0, 7), label: monthLabel(parseDate(dateStr.slice(0, 7) + '-01')) };
-    }
-    if (recapGroup === 'week') {
-      const d = parseDate(dateStr); const dow = (d.getDay() + 6) % 7;
-      const start = new Date(d); start.setDate(d.getDate() - dow);
-      const ks = formatDate(start);
-      return { key: ks, label: 'Week of ' + new Date(ks + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) };
-    }
-    return { key: dateStr, label: prettyDate(dateStr) };
+    $('recapCalPrev').addEventListener('click', () => { recapViewMonth = new Date(recapViewMonth.getFullYear(), recapViewMonth.getMonth()-1, 1); renderRecapCalendar(); });
+    $('recapCalNext').addEventListener('click', () => { recapViewMonth = new Date(recapViewMonth.getFullYear(), recapViewMonth.getMonth()+1, 1); renderRecapCalendar(); });
   }
 
   // All food entries that carry a price, oldest → newest.
@@ -244,59 +222,74 @@ const Money = (() => {
     return ACCOUNTS.map(a => `<option value="${a}" ${a === sel ? 'selected' : ''}>${a}</option>`).join('');
   }
 
-  function pendingRows() { return pricedEntries().filter(e => !e.recapped); }
+  // Default selected day: latest with pending rows, else latest priced, else today.
+  function defaultRecapDate() {
+    const all = pricedEntries();
+    const pend = all.filter(e => !e.recapped);
+    const pick = pend.length ? pend : all;
+    return pick.length ? pick[pick.length - 1].date : formatDate(new Date());
+  }
 
   function renderRecap() {
+    if (!recapDate) { recapDate = defaultRecapDate(); recapViewMonth = parseDate(recapDate); }
+    renderRecapCalendar();
+    renderRecapList();
+  }
+
+  // Month calendar: days with priced food are marked; tap one to show its rows.
+  function renderRecapCalendar() {
+    const grid = $('recapCalGrid');
+    const byDate = {};
+    pricedEntries().forEach(e => {
+      const d = (byDate[e.date] = byDate[e.date] || { total: 0, pending: 0 });
+      d.total += e.price; if (!e.recapped) d.pending++;
+    });
+    const year = recapViewMonth.getFullYear(), month = recapViewMonth.getMonth();
+    const firstWeekday = (new Date(year, month, 1).getDay()+6)%7;
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const today = formatDate(new Date());
+    $('recapCalMonth').textContent = monthLabel(recapViewMonth);
+
+    let html = '';
+    const prevLast = new Date(year, month, 0).getDate();
+    for (let i=firstWeekday-1;i>=0;i--) html += `<div class="cal-cell off-month"><span class="day-num">${prevLast-i}</span></div>`;
+    for (let day=1; day<=daysInMonth; day++) {
+      const ds = formatDate(new Date(year, month, day));
+      const info = byDate[ds];
+      const mark = info ? (info.pending ? 'has-pending' : 'all-done') : '';
+      const cls = ['cal-cell', mark, ds===today?'today':'', ds===recapDate?'selected':''].filter(Boolean).join(' ');
+      html += `<div class="${cls}" data-date="${ds}"><span class="day-num">${day}</span>${info ? `<span class="day-val">¥${Math.round(info.total)}</span>` : ''}</div>`;
+    }
+    const trailing = (7 - ((firstWeekday+daysInMonth)%7))%7;
+    for (let i=1;i<=trailing;i++) html += `<div class="cal-cell off-month"><span class="day-num">${i}</span></div>`;
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cal-cell[data-date]').forEach(c => c.addEventListener('click', () => { recapDate = c.dataset.date; renderRecap(); }));
+  }
+
+  function renderRecapList() {
     const showAll = $('showRecapped').checked;
-    const rows = pricedEntries().filter(e => showAll || !e.recapped);
-    const pending = pendingRows().length;
+    const dayAll = pricedEntries().filter(e => e.date === recapDate);
+    const rows = dayAll.filter(e => showAll || !e.recapped);
+    const dayPending = dayAll.filter(e => !e.recapped);
     const wrap = $('recapTable');
 
-    $('copyRecapBtn').disabled = pending === 0;
-    $('copyRecapBtn').textContent = pending ? `⧉ Copy ${pending} row${pending > 1 ? 's' : ''}` : '⧉ Nothing to copy';
+    $('recapDayLabel').textContent = recapDate ? prettyDate(recapDate) : '';
+    $('copyRecapBtn').disabled = dayPending.length === 0;
+    $('copyRecapBtn').textContent = dayPending.length ? `⧉ Copy ${dayPending.length} row${dayPending.length>1?'s':''}` : '⧉ Nothing to copy';
 
     if (rows.length === 0) {
-      wrap.innerHTML = `<div class="empty-state">No priced food to recap. Add a price when you log a meal and it shows up here.</div>`;
+      wrap.innerHTML = `<div class="empty-state">${dayAll.length ? 'All of this day is copied — tick "show already-copied" to see them.' : 'No priced food on this day.'}</div>`;
       return;
     }
-
-    // group by day/week/month (newest first) so a long list stays organized
-    const groups = {};
-    rows.forEach(e => {
-      const g = groupOf(e.date);
-      (groups[g.key] = groups[g.key] || { label: g.label, items: [] }).items.push(e);
-    });
-    const keys = Object.keys(groups).sort().reverse();
-
-    wrap.innerHTML = keys.map(k => {
-      const { label, items } = groups[k];
-      const subtotal = items.reduce((s, e) => s + e.price, 0);
-      const allDone = items.every(e => e.recapped);
-      return `
-      <div class="recap-group${allDone ? ' done' : ''}" data-key="${k}">
-        <button class="recap-group-head">
-          <span class="rg-chev">▾</span>
-          <span class="rg-date">${label}</span>
-          <span class="rg-sum">¥${subtotal.toFixed(2)} · ${items.length}</span>
-        </button>
-        <div class="recap-group-body">
-          ${items.map(rowHtml).join('')}
-        </div>
-      </div>`;
-    }).join('');
-
-    wrap.querySelectorAll('.recap-group-head').forEach(h =>
-      h.addEventListener('click', () => h.closest('.recap-group').classList.toggle('collapsed')));
+    wrap.innerHTML = rows.map(rowHtml).join('');
     wrap.querySelectorAll('.rc-cat').forEach(sel => sel.addEventListener('change', () => updateEntry(sel.dataset.id, { payCategory: sel.value })));
     wrap.querySelectorAll('.rc-acc').forEach(sel => sel.addEventListener('change', () => updateEntry(sel.dataset.id, { account: sel.value })));
   }
 
   function rowHtml(e) {
-    const showDate = recapGroup !== 'day';
     return `
       <div class="recap-row ${e.recapped ? 'done' : ''}" data-id="${e.id}">
         <div class="rc-top">
-          ${showDate ? `<span class="rc-date">${e.date.slice(5)}</span>` : ''}
           <span class="rc-name" title="${escapeAttr(e.name)}">${escapeHtml(e.name)}</span>
           <span class="rc-amt">¥${e.price.toFixed(2)}</span>
           ${e.recapped ? '<span class="rc-flag">✓</span>' : ''}
@@ -317,7 +310,7 @@ const Money = (() => {
 
   // Build tab-separated rows (H–N) and copy them, then mark entries recapped.
   function copyRows() {
-    const rows = pendingRows();
+    const rows = pricedEntries().filter(e => e.date === recapDate && !e.recapped);
     if (rows.length === 0) return;
     const tsv = rows.map(e => [
       e.date,

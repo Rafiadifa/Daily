@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=14" />
+  <link rel="stylesheet" href="css/styles.css?v=15" />
 </head>
 <body>
   <header class="app-header">
@@ -267,15 +267,15 @@
         <h3>Recap to planner</h3>
         <button id="copyRecapBtn" class="primary-btn">⧉ Copy rows</button>
       </div>
-      <p class="hint">Food entries with a price, not yet copied. Hit <strong>Copy rows</strong>, then in your planner open the month tab and paste into the first empty <strong>Date</strong> cell. Columns line up with <em>Date · Transactions · Amount · Cashflow · Category · Dari Account · Ke Account</em>.</p>
-      <div class="recap-controls">
-        <span class="recap-controls-label">Group by</span>
-        <div class="range-toggle">
-          <button class="recap-group-btn" data-group="day">Day</button>
-          <button class="recap-group-btn" data-group="week">Week</button>
-          <button class="recap-group-btn active" data-group="month">Month</button>
-        </div>
+      <p class="hint">Tap a day below to see its priced food. <strong>Highlighted</strong> days still have rows to copy. Hit <strong>Copy rows</strong>, then paste into the first empty <strong>Date</strong> cell of that month's tab. Columns line up with <em>Date · Transactions · Amount · Cashflow · Category · Dari Account · Ke Account</em>.</p>
+      <div class="cal-header">
+        <button class="day-nav" id="recapCalPrev">‹</button>
+        <h2 class="cal-month" id="recapCalMonth">—</h2>
+        <button class="day-nav" id="recapCalNext">›</button>
       </div>
+      <div class="cal-weekdays"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+      <div class="cal-grid compact" id="recapCalGrid"></div>
+      <div class="recap-day-label" id="recapDayLabel"></div>
       <div id="recapTable" class="recap-table"></div>
       <div class="recap-foot">
         <label class="checkbox-field small"><input type="checkbox" id="showRecapped" /><span>Show already-copied rows</span></label>
@@ -418,11 +418,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- App modules (order matters) -->
-  <script src="js/storage.js?v=14"></script>
-  <script src="js/calories.js?v=14"></script>
-  <script src="js/day.js?v=14"></script>
-  <script src="js/money.js?v=14"></script>
-  <script src="js/weight.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/storage.js?v=15"></script>
+  <script src="js/calories.js?v=15"></script>
+  <script src="js/day.js?v=15"></script>
+  <script src="js/money.js?v=15"></script>
+  <script src="js/weight.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>

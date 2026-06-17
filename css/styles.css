@@ -1531,6 +1531,15 @@ input[type="range"]::-moz-range-thumb {
 .cal-cell.has-entry .day-num { color: var(--accent-deep); font-weight: 600; }
 .cal-cell.has-entry .day-val { color: var(--accent-deep); }
 
+/* recap calendar: days with rows still to copy vs already copied */
+.cal-cell.has-pending { background: var(--accent-soft); border-color: var(--accent); }
+.cal-cell.has-pending .day-num { color: var(--accent-deep); font-weight: 600; }
+.cal-cell.has-pending .day-val { color: var(--accent-deep); }
+.cal-cell.all-done { background: var(--bg-soft); }
+.cal-cell.all-done .day-num { color: var(--ink-soft); }
+.cal-cell.all-done .day-val { color: var(--ink-faint); }
+.recap-day-label { font-family: var(--font-display); font-style: italic; font-size: 16px; color: var(--ink); margin: 14px 4px 8px; }
+
 /* ---------- Collapsible sections ---------- */
 .section-title.collapsible { cursor: pointer; user-select: none; }
 .section-title.collapsible:hover h3 { color: var(--accent-deep); }
