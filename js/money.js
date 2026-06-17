@@ -16,6 +16,7 @@ const Money = (() => {
   const NA = '- not applicable -';
   let chartInstance = null;
   let currentRange = 'week';
+  let recapGroup = 'month'; // day | week | month — how the recap list is grouped
 
   function init() {
     document.querySelectorAll('.money-range-btn').forEach(btn => {
@@ -30,6 +31,31 @@ const Money = (() => {
     $('copyRecapBtn').addEventListener('click', copyRows);
     $('showRecapped').addEventListener('change', renderRecap);
     $('editFoodBudgetBtn').addEventListener('click', editBudget);
+
+    recapGroup = Storage.getSetting('recapGroup', 'month');
+    document.querySelectorAll('.recap-group-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.group === recapGroup);
+      btn.addEventListener('click', () => {
+        recapGroup = btn.dataset.group;
+        Storage.setSetting('recapGroup', recapGroup);
+        document.querySelectorAll('.recap-group-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderRecap();
+      });
+    });
+  }
+
+  // Group key + display label for a date, by the current grouping mode.
+  function groupOf(dateStr) {
+    if (recapGroup === 'month') {
+      return { key: dateStr.slice(0, 7), label: monthLabel(parseDate(dateStr.slice(0, 7) + '-01')) };
+    }
+    if (recapGroup === 'week') {
+      const d = parseDate(dateStr); const dow = (d.getDay() + 6) % 7;
+      const start = new Date(d); start.setDate(d.getDate() - dow);
+      const ks = formatDate(start);
+      return { key: ks, label: 'Week of ' + new Date(ks + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) };
+    }
+    return { key: dateStr, label: prettyDate(dateStr) };
   }
 
   // All food entries that carry a price, oldest → newest.
@@ -234,20 +260,23 @@ const Money = (() => {
       return;
     }
 
-    // group by date (newest day first) so a long list stays organized
+    // group by day/week/month (newest first) so a long list stays organized
     const groups = {};
-    rows.forEach(e => { (groups[e.date] = groups[e.date] || []).push(e); });
-    const dates = Object.keys(groups).sort().reverse();
+    rows.forEach(e => {
+      const g = groupOf(e.date);
+      (groups[g.key] = groups[g.key] || { label: g.label, items: [] }).items.push(e);
+    });
+    const keys = Object.keys(groups).sort().reverse();
 
-    wrap.innerHTML = dates.map(d => {
-      const items = groups[d];
+    wrap.innerHTML = keys.map(k => {
+      const { label, items } = groups[k];
       const subtotal = items.reduce((s, e) => s + e.price, 0);
       const allDone = items.every(e => e.recapped);
       return `
-      <div class="recap-group${allDone ? ' done' : ''}" data-date="${d}">
-        <button class="recap-group-head" data-date="${d}">
+      <div class="recap-group${allDone ? ' done' : ''}" data-key="${k}">
+        <button class="recap-group-head">
           <span class="rg-chev">▾</span>
-          <span class="rg-date">${prettyDate(d)}</span>
+          <span class="rg-date">${label}</span>
           <span class="rg-sum">¥${subtotal.toFixed(2)} · ${items.length}</span>
         </button>
         <div class="recap-group-body">
@@ -263,9 +292,11 @@ const Money = (() => {
   }
 
   function rowHtml(e) {
+    const showDate = recapGroup !== 'day';
     return `
       <div class="recap-row ${e.recapped ? 'done' : ''}" data-id="${e.id}">
         <div class="rc-top">
+          ${showDate ? `<span class="rc-date">${e.date.slice(5)}</span>` : ''}
           <span class="rc-name" title="${escapeAttr(e.name)}">${escapeHtml(e.name)}</span>
           <span class="rc-amt">¥${e.price.toFixed(2)}</span>
           ${e.recapped ? '<span class="rc-flag">✓</span>' : ''}

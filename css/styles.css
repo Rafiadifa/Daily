@@ -691,16 +691,9 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---------- Layout: calendar + day detail ---------- */
 .cal-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-}
-@media (min-width: 800px) {
-  .cal-layout {
-    grid-template-columns: 1.1fr 1fr;
-    gap: 28px;
-    align-items: start;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 /* ---------- Calendar ---------- */
@@ -1524,6 +1517,12 @@ input[type="range"]::-moz-range-thumb {
 .cal-mode-btn:hover { color: var(--accent-deep); }
 .cal-grid.week .cal-cell { aspect-ratio: auto; min-height: 46px; justify-content: center; }
 
+/* compact calendar (weight history heatmap) */
+.cal-grid.compact { gap: 3px; }
+.cal-grid.compact .cal-cell { aspect-ratio: auto; min-height: 34px; padding: 2px 3px; border-radius: 6px; }
+.cal-grid.compact .cal-cell .day-num { font-size: 10px; }
+.cal-grid.compact .cal-cell .day-val { font-size: 9px; }
+
 .text-btn.danger { color: var(--danger); }
 .modal-footer #deleteWeightBtn { margin-right: auto; }
 
@@ -1606,6 +1605,14 @@ input[type="range"]::-moz-range-thumb {
 }
 .money-range-btn.active { background: var(--bg-card); color: var(--ink); box-shadow: var(--shadow-sm); }
 
+.recap-controls { display: flex; align-items: center; gap: 10px; margin: 10px 4px 0; }
+.recap-controls-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); font-weight: 500; }
+.recap-group-btn {
+  background: transparent; border: none; padding: 5px 12px;
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+  color: var(--ink-soft); cursor: pointer; font-family: inherit;
+}
+.recap-group-btn.active { background: var(--bg-card); color: var(--ink); box-shadow: var(--shadow-sm); }
 .recap-table { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .recap-group { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
 .recap-group.done { opacity: 0.6; }
